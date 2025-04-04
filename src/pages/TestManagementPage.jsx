@@ -80,19 +80,26 @@ const TestManagementPage = () => {
   const handleCloseDialog = () => setDialogOpen(false);
 
   // Save (create or update) test data
-  const handleSave = async () => {
-    try {
-      if (editingTest) {
-        await apiService.updateTest(editingTest._id, { title, description });
-      } else {
-        await apiService.createTest({ title, description });
-      }
-      handleCloseDialog();
-      fetchTests();
-    } catch (error) {
-      console.error('Error saving test:', error);
+
+const handleSave = async () => {
+  try {
+    if (editingTest) {
+      await apiService.updateTest(editingTest._id, { title, description });
+    } else {
+      // Explicitly create test with empty questions array
+      await apiService.createTest({ 
+        title, 
+        description,
+        questions: [] 
+      });
     }
-  };
+    handleCloseDialog();
+    fetchTests();
+  } catch (error) {
+    console.error('Error saving test:', error);
+    alert(`Error: ${error.response?.data?.message || error.message}`);
+  }
+};
 
   // Delete a test
   const handleDelete = async (id) => {
@@ -123,22 +130,41 @@ const TestManagementPage = () => {
   };
 
   // Add a new question for a test
-  const handleAddQuestion = async () => {
-    try {
-      // Options should be split by comma into an array
-      const optionsArray = options.split(',').map(opt => opt.trim()).filter(opt => opt);
-      const questionData = { questionText, options: optionsArray, correctAnswer };
-      const newQuestion = await apiService.addQuestion(selectedTestId, questionData);
-      // Update local state with the new question appended
-      setQuestions([...questions, newQuestion]);
-      // Reset fields
-      setQuestionText('');
-      setOptions('');
-      setCorrectAnswer('');
-    } catch (error) {
-      console.error('Error adding question:', error);
+
+const handleAddQuestion = async () => {
+  try {
+    // Validate required fields
+    if (!questionText.trim() || !options.trim() || correctAnswer === '') {
+      alert('Please fill all question fields');
+      return;
     }
-  };
+
+    // Process options and validate correct answer
+    const optionsArray = options.split(',').map(opt => opt.trim()).filter(opt => opt);
+    
+    if (!optionsArray.includes(correctAnswer)) {
+      alert('Correct answer must match one of the options');
+      return;
+    }
+
+    const questionData = { 
+      questionText, 
+      options: optionsArray, 
+      correctAnswer: optionsArray.indexOf(correctAnswer) // Store as index
+    };
+
+    const newQuestion = await apiService.addQuestion(selectedTestId, questionData);
+    setQuestions([...questions, newQuestion]);
+    
+    // Reset fields
+    setQuestionText('');
+    setOptions('');
+    setCorrectAnswer('');
+  } catch (error) {
+    console.error('Error adding question:', error);
+    alert(`Error: ${error.response?.data?.message || error.message}`);
+  }
+};
 
   // Delete a question from a test
   const handleDeleteQuestion = async (questionId) => {
@@ -437,32 +463,44 @@ const TestManagementPage = () => {
             <Typography variant="h6" sx={{ mb: 2, color: 'text.primary' }}>
               Add New Question
             </Typography>
-            <TextField
-              fullWidth
-              label="Question Text"
-              variant="outlined"
-              margin="normal"
-              value={questionText}
-              onChange={(e) => setQuestionText(e.target.value)}
-            />
-            <TextField
-              fullWidth
-              label="Options (comma separated)"
-              variant="outlined"
-              margin="normal"
-              value={options}
-              onChange={(e) => setOptions(e.target.value)}
-              sx={{ mt: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Correct Answer"
-              variant="outlined"
-              margin="normal"
-              value={correctAnswer}
-              onChange={(e) => setCorrectAnswer(e.target.value)}
-              sx={{ mt: 2 }}
-            />
+            {/* In your Question Management Dialog */}
+<TextField
+  fullWidth
+  label="Question Text"
+  variant="outlined"
+  margin="normal"
+  value={questionText}
+  onChange={(e) => setQuestionText(e.target.value)}
+  required
+  error={questionText === ''}
+  helperText={questionText === '' ? 'This field is required' : ''}
+/>
+
+<TextField
+  fullWidth
+  label="Options (comma separated)"
+  variant="outlined"
+  margin="normal"
+  value={options}
+  onChange={(e) => setOptions(e.target.value)}
+  sx={{ mt: 2 }}
+  required
+  error={options === ''}
+  helperText={options === '' ? 'This field is required' : 'Separate options with commas'}
+/>
+
+<TextField
+  fullWidth
+  label="Correct Answer"
+  variant="outlined"
+  margin="normal"
+  value={correctAnswer}
+  onChange={(e) => setCorrectAnswer(e.target.value)}
+  sx={{ mt: 2 }}
+  required
+  error={correctAnswer === ''}
+  helperText={correctAnswer === '' ? 'This field is required' : 'Must match one of the options'}
+/>
             <Button
               variant="contained"
               onClick={handleAddQuestion}

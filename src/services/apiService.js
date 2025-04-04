@@ -36,8 +36,18 @@ const apiService = {
     return response.data;
   },
   createTest: async (testData) => {
-    const response = await api.post('/tests', testData);
-    return response.data;
+    try {
+      // Ensure questions array is always present
+      const dataToSend = {
+        ...testData,
+        questions: testData.questions || []
+      };
+      const response = await api.post('/tests', dataToSend);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating test:', error);
+      throw error;
+    }
   },
   updateTest: async (testId, updates) => {
     const response = await api.put(`/tests/${testId}`, updates);
